@@ -5,7 +5,7 @@ include(pico_sdk_import.cmake)
 
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-project(MqttTest C CXX ASM)
+project(mqtt-client C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(PICO_BOARD "pico_w")
@@ -23,10 +23,11 @@ pico_sdk_init()
 add_definitions(-DWIFI_SSID="${WIFI_SSID}")
 add_definitions(-DWIFI_PASSWORD="${WIFI_PASSWORD}")
 add_definitions(-DMQTT_BROKER_IP="${MQTT_BROKER_IP}")
+add_definitions(-DMQTT_BROKER_HOSTNAME="${MQTT_BROKER_HOSTNAME}")
 
 add_compile_options(-Wall -O2)       
 
-add_executable(mqtt-client   mqtt-client.c)
+add_executable(mqtt-client mqtt-client.c)
 
 target_include_directories(mqtt-client PRIVATE 
         ${CMAKE_CURRENT_LIST_DIR}
@@ -35,7 +36,8 @@ target_link_libraries(mqtt-client
         pico_cyw43_arch_lwip_threadsafe_background
         pico_stdlib
         pico_lwip_mqtt
-        )      
+        hardware_adc
+)
 
 pico_add_extra_outputs(mqtt-client)
 
