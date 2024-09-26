@@ -1,3 +1,4 @@
+// https://github.com/cniles/picow-iot/blob/main/picow_iot.c
 #include "../helper.h"
 
 #include "hardware/adc.h"
@@ -18,8 +19,6 @@
 #define MQTTServerPassword "testpassword"
 #define ClientID "Hempy"
 #define PubTopic "test_topic"
-#define PublishRetain 0
-#define QoS 1
 #define KeepAliveSeconds 30
 
 bool dnsLookupInProgress = false;
@@ -66,13 +65,12 @@ char *intToChar(int Number) // Converting int to char
   return ReturnChar;
 }
 
-void mqttIncomingTopic_Callback(void *Arg, const char *Topic, u32_t Tot_len) {
+void mqtt_incoming_publish_cb(void *Arg, const char *Topic, u32_t Tot_len) {
   printf_ts("Incoming topic: %s ,total length: %u\n", Topic,
             (unsigned int)Tot_len);
 }
 
-void mqttIncomingData_Callback(void *Arg, const u8_t *Data, u16_t Len,
-                               u8_t Flags) {
+void mqtt_incoming_data_cb(void *Arg, const u8_t *Data, u16_t Len, u8_t Flags) {
   printf_ts("Incoming payload with length %d, flags %u\n", Len,
             (unsigned int)Flags);
 
@@ -90,8 +88,6 @@ void mqtt_connection_cb(mqtt_client_t *Client, void *Arg,
                         mqtt_connection_status_t Status) {
   if (Status == MQTT_CONNECT_ACCEPTED) {
     printf_ts("mqtt_connection_cb(): MQTT_CONNECT_ACCEPTED\n");
-    mqtt_set_inpub_callback(Client, mqttIncomingTopic_Callback,
-                            mqttIncomingData_Callback, Arg);
   } else if (Status == MQTT_CONNECT_DISCONNECTED) {
     printf_ts("mqtt_connection_cb(): MQTT_CONNECT_DISCONNECTED\n");
   } else {
@@ -148,7 +144,7 @@ int init_server_ip() {
 }
 
 int main() {
-  int publish_interval_sec = 30;
+  int publish_interval_sec = 60;
   int delay_sec = 10;
   mqtt_client_t *mc;
   absolute_time_t t0 = 0;
@@ -193,12 +189,16 @@ int main() {
     ci.keep_alive = KeepAliveSeconds;
     // ClientInfo.will_topic = LwtTopic;
     // ClientInfo.will_msg = LwtMessage;
-    ci.will_qos = QoS;
+    // ci.will_qos = 1;
     // ClientInfo.will_retain = LwtRetain;
 
     cyw43_arch_lwip_begin();
-    mqtt_err = mqtt_client_connect(mc, &ServerIP, MQTTServerPort,
-                                   mqtt_connection_cb, NULL, &ci);
+
+    mqtt_set_inpub_callback(mc, mqtt_incoming_publish_cb, mqtt_incoming_data_cb,
+                            LWIP_CONST_CAST(void *, &mc));
+    mqtt_err =
+        mqtt_client_connect(mc, &ServerIP, MQTTServerPort, mqtt_connection_cb,
+                            LWIP_CONST_CAST(void *, &ci), &ci);
     cyw43_arch_lwip_end();
     if (mqtt_err != ERR_OK) {
       printf_ts("mqtt_client_connect() failed: %d\n", mqtt_err);
@@ -223,18 +223,20 @@ int main() {
           publish_interval_sec * 1000 * 1000)
         continue;
 
+      cyw43_arch_poll();
       char payload[PAYLOAD_SIZE];
       snprintf(payload, PAYLOAD_SIZE, "%.01f", read_onboard_temperature());
       printf_ts("payload: %s\n", payload);
-
+      cyw43_arch_lwip_begin();
       printf_ts("Publishing data to %s...", PubTopic);
-      if ((mqtt_err = mqtt_publish(mc, PubTopic, payload, strlen(payload), QoS,
-                                   PublishRetain, mqtt_publish_cb,
-                                   (void *)&PubTopic)) != ERR_OK) {
+      if ((mqtt_err = mqtt_publish(mc, PubTopic, payload, strlen(payload), 1, 0,
+                                   mqtt_publish_cb, (void *)&PubTopic)) !=
+          ERR_OK) {
         printf_ts("mqtt_publish() failed: %d\n", mqtt_err);
+        cyw43_arch_lwip_end();
         goto err_mqtt_publish_failed;
       }
-
+      cyw43_arch_lwip_end();
       t0 = get_absolute_time();
     }
   err_mqtt_publish_failed:

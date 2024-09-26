@@ -101,4 +101,5 @@ CMakeUserPresets.json
 #
 
 */build/*
+**/build/*
 */.cache/
