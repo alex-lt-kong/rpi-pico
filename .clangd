@@ -5,5 +5,4 @@ InlayHints:
 CompileFlags:
   # need to add the system directories back, otherwise clangd will keep complaining
   Add:
-    - "-I/usr/include/"
-    - "-I/usr/include/x86_64-linux-gnu/"
+    - "-isystem/usr/include/newlib/"

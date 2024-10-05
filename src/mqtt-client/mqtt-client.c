@@ -1,16 +1,27 @@
 // https://github.com/cniles/picow-iot/blob/main/picow_iot.c
-#include "../helper.h"
+// #include "../../src/dht20/dht20.h"
+#include "dht20/src/dht20/dht20.h"
+#include "helper.h"
 
-#include "hardware/adc.h"
+// #include "hardware/adc.h"
+#include "hardware/i2c.h"
 #include "lwip/apps/mqtt.h"
 #include "lwip/dns.h"
 #include "lwip/err.h"
 #include "lwip/ip_addr.h"
+#include "pico/binary_info.h"
 #include "pico/cyw43_arch.h"
 #include "pico/stdio.h"
+#include "pico/stdlib.h"
 #include <pico/time.h>
 
 #include <stdio.h>
+
+dht20_measurement dht20_result;
+
+// PIN number as GPIO
+#define PICO_DEFAULT_I2C_SDA_PIN 0
+#define PICO_DEFAULT_I2C_SCL_PIN 1
 
 #define PAYLOAD_SIZE 128
 // Constants - UPDATE THIS SECTION
@@ -25,18 +36,6 @@ bool dnsLookupInProgress = false;
 ip_addr_t ServerIP;
 
 typedef void (*Callback_type)(const u8_t *Data, u16_t Len);
-
-/* References for this implementation:
- * raspberry-pi-pico-c-sdk.pdf, Section '4.1.1. hardware_adc'
- * pico-examples/adc/adc_console/adc_console.c */
-float read_onboard_temperature() {
-  /* 12-bit conversion, assume max value == ADC_VREF == 3.3 V */
-  const float conversion_factor = 3.3f / (1 << 12);
-  float adc = (float)adc_read() * conversion_factor;
-  float tempC = 27.0f - (adc - 0.706f) / 0.001721f;
-
-  return tempC;
-}
 
 void mqtt_publish_cb(void *Arg, err_t Result) {
   if (Result != ERR_OK) {
@@ -143,32 +142,54 @@ int init_server_ip() {
   return 0;
 }
 
+int init_dht20() {
+  i2c_init(i2c_default, 100 * 1000);
+  gpio_set_function(PICO_DEFAULT_I2C_SDA_PIN, GPIO_FUNC_I2C);
+  gpio_set_function(PICO_DEFAULT_I2C_SCL_PIN, GPIO_FUNC_I2C);
+  gpio_pull_up(PICO_DEFAULT_I2C_SDA_PIN);
+  gpio_pull_up(PICO_DEFAULT_I2C_SCL_PIN);
+  // Make the I2C pins available to picotool
+  bi_decl(bi_2pins_with_func(PICO_DEFAULT_I2C_SDA_PIN, PICO_DEFAULT_I2C_SCL_PIN,
+                             GPIO_FUNC_I2C));
+
+  dht20_init();
+  return 0;
+}
+
 int main() {
   int publish_interval_sec = 60;
   int delay_sec = 10;
+  int dht20_ret;
   mqtt_client_t *mc;
   absolute_time_t t0 = 0;
   struct mqtt_connect_client_info_t ci;
   err_t mqtt_err;
 
   stdio_init_all();
+
+  sleep_with_output(delay_sec, "initializing basic components");
   if (cyw43_arch_init() != 0) {
-    printf("cyw43_arch_init() failed, wifi not initialized\n");
+    printf_ts("cyw43_arch_init() failed, wifi not initialized\n");
     goto err_cyw43_arch_init_failed;
   }
+  printf_ts("cyw43_driver and lwIP stack initialized\n");
+
   mc = mqtt_client_new();
   if (mc == NULL) {
-    printf("mqtt_client_new() failed\n");
+    printf_ts("mqtt_client_new() failed\n");
     goto err_mqtt_client_new_failed;
   }
-  adc_init();
-  adc_set_temp_sensor_enabled(true);
-  adc_select_input(4);
+  printf_ts("mqtt client initialized\n");
+
+  if ((dht20_ret = init_dht20())) {
+    printf_ts("init_dht20() failed\n");
+    goto err_dht20_failed;
+  }
+  printf_ts("DHT20 initialized\n");
+
   while (1) {
-    for (int i = 0; i < delay_sec; ++i) {
-      printf_ts("Waiting for %d sec before start...\n", delay_sec - i);
-      sleep_ms(1000);
-    }
+    // This is also for wifi disconnect retry etc
+    sleep_with_output(delay_sec, "this event loop iteration");
 
     int rc;
     if ((rc = initialize_wifi()) != 0) {
@@ -225,7 +246,8 @@ int main() {
 
       cyw43_arch_poll();
       char payload[PAYLOAD_SIZE];
-      snprintf(payload, PAYLOAD_SIZE, "%.01f", read_onboard_temperature());
+      dht20_measure(&dht20_result);
+      snprintf(payload, PAYLOAD_SIZE, "%.01f", dht20_result.temperature);
       printf_ts("payload: %s\n", payload);
       cyw43_arch_lwip_begin();
       printf_ts("Publishing data to %s...", PubTopic);
@@ -247,6 +269,7 @@ int main() {
     continue;
   }
   cyw43_arch_deinit();
+err_dht20_failed:
 err_mqtt_client_new_failed:
 err_cyw43_arch_init_failed:
   return 0;
