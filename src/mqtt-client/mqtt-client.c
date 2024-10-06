@@ -156,6 +156,7 @@ int main() {
   int delay_sec = 10;
   int dht20_ret;
   mqtt_client_t *mc;
+  bool led_on = true;
   absolute_time_t t0 = 0;
   struct mqtt_connect_client_info_t ci;
   err_t mqtt_err;
@@ -168,6 +169,7 @@ int main() {
     goto err_cyw43_arch_init_failed;
   }
   printf_ts("cyw43_driver and lwIP stack initialized\n");
+  cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, true);
 
   mc = mqtt_client_new();
   if (mc == NULL) {
@@ -234,10 +236,13 @@ int main() {
               publish_interval_sec);
 
     while (1) {
-      sleep_ms(100);
+      sleep_ms(1000);
       if (absolute_time_diff_us(t0, get_absolute_time()) <
-          publish_interval_sec * 1000 * 1000)
+          publish_interval_sec * 1000 * 1000) {
+        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, led_on);
+        led_on = !led_on;
         continue;
+      }
 
       cyw43_arch_poll();
       char payload[PAYLOAD_SIZE];

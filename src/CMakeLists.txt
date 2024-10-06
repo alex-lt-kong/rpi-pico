@@ -6,3 +6,4 @@ target_link_libraries(helper pico_stdlib)
 
 add_subdirectory(dht20)
 add_subdirectory(mqtt-client)
+add_subdirectory(blink)
