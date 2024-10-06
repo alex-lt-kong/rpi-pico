@@ -1,9 +1,7 @@
 // https://github.com/cniles/picow-iot/blob/main/picow_iot.c
-// #include "../../src/dht20/dht20.h"
 #include "dht20/src/dht20/dht20.h"
 #include "helper.h"
 
-// #include "hardware/adc.h"
 #include "hardware/i2c.h"
 #include "lwip/apps/mqtt.h"
 #include "lwip/dns.h"
@@ -13,11 +11,11 @@
 #include "pico/cyw43_arch.h"
 #include "pico/stdio.h"
 #include "pico/stdlib.h"
-#include <pico/time.h>
+#include "pico/time.h"
 
 #include <stdio.h>
 
-dht20_measurement dht20_result;
+dht20_reading dht20_result;
 
 // PIN number as GPIO
 #define PICO_DEFAULT_I2C_SDA_PIN 0
@@ -28,8 +26,6 @@ dht20_measurement dht20_result;
 #define MQTTServerPort 1883 ///< MQTT server Port
 #define MQTTServerUser "testuser"
 #define MQTTServerPassword "testpassword"
-#define ClientID "Hempy"
-#define PubTopic "test_topic"
 #define KeepAliveSeconds 30
 
 bool dnsLookupInProgress = false;
@@ -143,7 +139,7 @@ int init_server_ip() {
 }
 
 int init_dht20() {
-  i2c_init(i2c_default, 100 * 1000);
+  i2c_init(dht20_device, 100 * 1000);
   gpio_set_function(PICO_DEFAULT_I2C_SDA_PIN, GPIO_FUNC_I2C);
   gpio_set_function(PICO_DEFAULT_I2C_SCL_PIN, GPIO_FUNC_I2C);
   gpio_pull_up(PICO_DEFAULT_I2C_SDA_PIN);
@@ -152,8 +148,7 @@ int init_dht20() {
   bi_decl(bi_2pins_with_func(PICO_DEFAULT_I2C_SDA_PIN, PICO_DEFAULT_I2C_SCL_PIN,
                              GPIO_FUNC_I2C));
 
-  dht20_init();
-  return 0;
+  return dht20_init();
 }
 
 int main() {
@@ -204,7 +199,7 @@ int main() {
     }
 
     memset(&ci, 0, sizeof(ci));
-    ci.client_id = ClientID;
+    ci.client_id = MQTT_CLIENT_ID;
     ci.client_user = MQTTServerUser;
     ci.client_pass = MQTTServerPassword;
     ci.keep_alive = KeepAliveSeconds;
@@ -247,12 +242,12 @@ int main() {
       cyw43_arch_poll();
       char payload[PAYLOAD_SIZE];
       dht20_measure(&dht20_result);
-      snprintf(payload, PAYLOAD_SIZE, "%.01f", dht20_result.temperature);
+      snprintf(payload, PAYLOAD_SIZE, "%.01f", dht20_result.temp_celsius);
       printf_ts("payload: %s\n", payload);
       cyw43_arch_lwip_begin();
-      printf_ts("Publishing data to %s...", PubTopic);
-      if ((mqtt_err = mqtt_publish(mc, PubTopic, payload, strlen(payload), 1, 0,
-                                   mqtt_publish_cb, (void *)&PubTopic)) !=
+      printf_ts("Publishing data to " MQTT_TOPIC "...");
+      if ((mqtt_err = mqtt_publish(mc, MQTT_TOPIC, payload, strlen(payload), 1,
+                                   0, mqtt_publish_cb, (void *)&MQTT_TOPIC)) !=
           ERR_OK) {
         printf_ts("mqtt_publish() failed: %d\n", mqtt_err);
         cyw43_arch_lwip_end();

@@ -1,40 +1,26 @@
-/**
- * Copyright (c) 2023 Michael Kuhn
- *
- * SPDX-License-Identifier: BSD-3-Clause
- */
+// Originally https://github.com/mikuhn/Raspberry-Pi-Pico-DHT20/tree/main
 
-#include <stdio.h>
+#include "dht20.h"
 
 #include "hardware/i2c.h"
 #include "pico/binary_info.h"
 #include "pico/stdlib.h"
 #include "pico/time.h"
 
-#include "dht20.h"
+#include <stdio.h>
 
-// PIN number as GPIO
-#define PICO_DEFAULT_I2C_SDA_PIN 0
-#define PICO_DEFAULT_I2C_SCL_PIN 1
-// I2C reserves some addresses for special purposes. We exclude these from the
-// scan. These are any addresses of the form 000 0xxx or 111 1xxx
-bool reserved_addr(uint8_t addr) {
-  return (addr & 0x78) == 0 || (addr & 0x78) == 0x78;
-}
+// PIN number is in GPIO, seems we can't rename these two define's
+#define PICO_DEFAULT_I2C_SDA_PIN 2
+#define PICO_DEFAULT_I2C_SCL_PIN 3
 
 int main() {
-  // Enable UART so we can print status output
-  stdio_init_all();
-  sleep_ms(1500);
-
-#if !defined(i2c_default) || !defined(PICO_DEFAULT_I2C_SDA_PIN) ||             \
-    !defined(PICO_DEFAULT_I2C_SCL_PIN)
-#warning i2c/bus_scan example requires a board with I2C pins
-  puts("Default I2C pins were not defined");
-#else
-  // This example will use I2C0 on the default SDA and SCL pins (GP4, GP5 on a
-  // Pico)
-  i2c_init(i2c_default, 100 * 1000);
+  (void)stdio_init_all();
+  // Need to wait for a while; otherwise some early output would be missed
+  sleep_ms(5000);
+  printf("DHT20-driver started\n");
+  dht20_device = i2c1;
+  unsigned int buadrate = i2c_init(dht20_device, 100 * 1000);
+  printf("buadrate of I2C protocol: %u\n", buadrate);
   gpio_set_function(PICO_DEFAULT_I2C_SDA_PIN, GPIO_FUNC_I2C);
   gpio_set_function(PICO_DEFAULT_I2C_SCL_PIN, GPIO_FUNC_I2C);
   gpio_pull_up(PICO_DEFAULT_I2C_SDA_PIN);
@@ -43,16 +29,20 @@ int main() {
   bi_decl(bi_2pins_with_func(PICO_DEFAULT_I2C_SDA_PIN, PICO_DEFAULT_I2C_SCL_PIN,
                              GPIO_FUNC_I2C));
 
-  dht20_init();
-  dht20_measurement dht20_result;
+  if (dht20_init() != 0) {
+    printf("dht20_init() failed\n");
+    return -1;
+  }
+
+  dht20_reading dht20_result;
 
   printf("humidity temperature\n");
 
   while (1) {
     dht20_measure(&dht20_result);
-    printf("%.02f%%   %.02fC\n", dht20_result.humidity,
-           dht20_result.temperature);
+    printf("%.02f%%   %.02f°C\n", dht20_result.humidity,
+           dht20_result.temp_celsius);
     sleep_ms(2000);
   }
-#endif
+  return 0;
 }

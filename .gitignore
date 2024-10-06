@@ -183,3 +183,4 @@ pythonenv*
 **/build/*
 */.cache/
 **/.cache/*
+configs.cmake

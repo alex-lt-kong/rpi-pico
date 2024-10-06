@@ -17,10 +17,10 @@ endif()
 # Initialize the SDK
 pico_sdk_init()
 
-add_definitions(-DWIFI_SSID="${WIFI_SSID}")
-add_definitions(-DWIFI_PASSWORD="${WIFI_PASSWORD}")
-add_definitions(-DMQTT_BROKER_IP="${MQTT_BROKER_IP}")
-add_definitions(-DMQTT_BROKER_HOSTNAME="${MQTT_BROKER_HOSTNAME}")
+#add_definitions(-DWIFI_SSID="${WIFI_SSID}")
+#add_definitions(-DWIFI_PASSWORD="${WIFI_PASSWORD}")
+#add_definitions(-DMQTT_BROKER_IP="${MQTT_BROKER_IP}")
+#add_definitions(-DMQTT_BROKER_HOSTNAME="${MQTT_BROKER_HOSTNAME}")
 
 add_compile_options(-Wall -O2)
 
