@@ -218,7 +218,7 @@ int main() {
         mqtt_client_connect(mc, &ServerIP, MQTTServerPort, mqtt_connection_cb,
                             LWIP_CONST_CAST(void *, &ci), &ci);
     cyw43_arch_lwip_end();
-    if (mqtt_err != ERR_OK) {
+    if (mqtt_err != ERR_OK && mqtt_err != ERR_ISCONN) {
       printf_ts("mqtt_client_connect() failed: %d\n", mqtt_err);
       goto err_mqtt_client_connect_failed;
     }
