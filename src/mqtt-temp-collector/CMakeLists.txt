@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 include(pico_sdk_import.cmake)
-project(mqtt-client C CXX ASM)
+project(mqtt-temp-collector C CXX ASM)
 
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -24,16 +24,16 @@ pico_sdk_init()
 
 add_compile_options(-Wall -O2)
 
-add_executable(mqtt-client mqtt-client.c)
+add_executable(mqtt-temp-collector mqtt-temp-collector.c)
 
-target_include_directories(mqtt-client PRIVATE 
+target_include_directories(mqtt-temp-collector PRIVATE 
         ${CMAKE_CURRENT_LIST_DIR}
 )
 
 # include_directories(../dht20/src/dht20)
 include_directories(..)
 
-target_link_libraries(mqtt-client helper
+target_link_libraries(mqtt-temp-collector helper
         pico_cyw43_arch_lwip_threadsafe_background
         pico_stdlib
         pico_lwip_mqtt
@@ -41,7 +41,7 @@ target_link_libraries(mqtt-client helper
         pico_stdlib hardware_i2c pico_binary_info dht20
 )
 
-pico_add_extra_outputs(mqtt-client)
-pico_enable_stdio_usb(mqtt-client 1) # enable usb output
-pico_enable_stdio_uart(mqtt-client 1) # enable uart output
+pico_add_extra_outputs(mqtt-temp-collector)
+pico_enable_stdio_usb(mqtt-temp-collector 1) # enable usb output
+pico_enable_stdio_uart(mqtt-temp-collector 1) # enable uart output
 
