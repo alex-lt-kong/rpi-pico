@@ -1,11 +1,13 @@
+use <./side_groove.scad>;
+
 pico_w_width = 21;
 pico_w_length = 51;
 margin = 1;
 
-side_panel_height = 25;
-side_panel_thickness = 2;
+side_panel_height = 40;
+side_panel_thickness = 3;
 
-base_thickness = 4;
+base_thickness = 3;
 base_width = pico_w_width + margin * 2 + side_panel_thickness * 2;
 base_length = 100;
 
@@ -32,8 +34,8 @@ board_support = [
 side_panel = [
     [0, 0],
     [0, base_length],    
-    [side_panel_thickness + board_support_thickness, base_length],
-    [side_panel_thickness + board_support_thickness, 0]
+    [side_panel_thickness + 0, base_length],
+    [side_panel_thickness + 0, 0]
 ];
 
 delta_length = 42;
@@ -64,6 +66,8 @@ module cable_groove() {
         ]);
     }
 }
+
+
 
 module sensor_support() {
     width = 2;
@@ -98,7 +102,7 @@ difference() {
         }
         // right side panel
         color("red",0.5)
-        translate([base_width - side_panel_thickness, 0, 0])
+        translate([base_width, 0, 0])
         linear_extrude(height = side_panel_height) {
             polygon(side_panel);
         }        
@@ -129,4 +133,8 @@ difference() {
         hole_cylinder();
     translate([0, row3_y_offset - hole_radius, 0])
         cable_groove();
+    
+    color("red",0.5)       
+    translate([-1, 0, side_panel_height - 5])
+        square_frame(base_width + 2, base_length - 2, 3, 3); 
 }

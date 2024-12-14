@@ -1,25 +1,15 @@
 // https://github.com/cniles/picow-iot/blob/main/picow_iot.c
-#include "dht20/src/dht20/dht20.h"
 #include "helper.h"
 
-#include "hardware/i2c.h"
 #include "lwip/apps/mqtt.h"
 #include "lwip/dns.h"
 #include "lwip/err.h"
 #include "lwip/ip_addr.h"
-#include "pico/binary_info.h"
 #include "pico/cyw43_arch.h"
 #include "pico/stdio.h"
-#include "pico/stdlib.h"
 #include "pico/time.h"
 
-#include <stdio.h>
-
-dht20_reading dht20_result;
-
-// PIN number as GPIO
-#define PICO_DEFAULT_I2C_SDA_PIN 0
-#define PICO_DEFAULT_I2C_SCL_PIN 1
+// #include <stdio.h>
 
 #define PAYLOAD_SIZE 128
 // Constants - UPDATE THIS SECTION
@@ -138,26 +128,10 @@ int init_server_ip() {
   return 0;
 }
 
-int init_dht20() {
-  i2c_init(dht20_device, 100 * 1000);
-  gpio_set_function(PICO_DEFAULT_I2C_SDA_PIN, GPIO_FUNC_I2C);
-  gpio_set_function(PICO_DEFAULT_I2C_SCL_PIN, GPIO_FUNC_I2C);
-  gpio_pull_up(PICO_DEFAULT_I2C_SDA_PIN);
-  gpio_pull_up(PICO_DEFAULT_I2C_SCL_PIN);
-  // Make the I2C pins available to picotool
-  bi_decl(bi_2pins_with_func(PICO_DEFAULT_I2C_SDA_PIN, PICO_DEFAULT_I2C_SCL_PIN,
-                             GPIO_FUNC_I2C));
-
-  return dht20_init();
-}
-
 int main() {
   int publish_interval_sec = 60;
   int delay_sec = 10;
-  int dht20_ret;
   mqtt_client_t *mc;
-  bool led_on = true;
-  absolute_time_t t0 = 0;
   struct mqtt_connect_client_info_t ci;
   err_t mqtt_err;
 
@@ -177,12 +151,6 @@ int main() {
     goto err_mqtt_client_new_failed;
   }
   printf_ts("mqtt client initialized\n");
-
-  if ((dht20_ret = init_dht20())) {
-    printf_ts("init_dht20() failed\n");
-    goto err_dht20_failed;
-  }
-  printf_ts("DHT20 initialized\n");
 
   while (1) {
     // This is also for wifi disconnect retry etc
@@ -234,24 +202,14 @@ int main() {
 
     printf_ts("Entering publishing loop, interval: %d sec\n",
               publish_interval_sec);
-
+    uint8_t counter = 0;
     while (1) {
       sleep_ms(1000);
-      if (absolute_time_diff_us(t0, get_absolute_time()) <
-          publish_interval_sec * 1000 * 1000) {
-        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, led_on);
-        led_on = !led_on;
-        continue;
-      }
 
       cyw43_arch_poll();
       char payload[PAYLOAD_SIZE];
-      if ((rc = dht20_measure(&dht20_result)) != 0) {
-        printf_ts("dht20_measure() failed: %d\n", rc);
-        continue;
-      }
-      snprintf(payload, PAYLOAD_SIZE, "{\"reading\": %.01f}",
-               dht20_result.temp_celsius);
+
+      snprintf(payload, PAYLOAD_SIZE, "{\"reading\": %u}", counter++);
       printf_ts("payload: %s\n", payload);
       cyw43_arch_lwip_begin();
       printf_ts("Publishing data to " MQTT_TOPIC "...");
@@ -263,7 +221,6 @@ int main() {
         goto err_mqtt_publish_failed;
       }
       cyw43_arch_lwip_end();
-      t0 = get_absolute_time();
     }
   err_mqtt_publish_failed:
     mqtt_disconnect(mc);
@@ -273,7 +230,6 @@ int main() {
     continue;
   }
   cyw43_arch_deinit();
-err_dht20_failed:
 err_mqtt_client_new_failed:
 err_cyw43_arch_init_failed:
   return 0;
