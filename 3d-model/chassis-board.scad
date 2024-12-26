@@ -18,7 +18,7 @@ base = [
     [base_width, 0]
 ];
 
-board_support_thickness = 2;
+board_support_thickness = 3;
 board_support = [
     [0, 0],
     [0, pico_w_length - 5],
@@ -51,7 +51,7 @@ hole_radius = 3 / 2;
 module hole_cylinder() {
     cylinder(h = side_panel_height, r = hole_radius, center = true);
 }
-holes_x_offset = (21 - 11.4) / 2;
+holes_x_offset = 6;
 
 module cable_groove() {
     groove_depth = 2;
@@ -118,7 +118,7 @@ difference() {
     translate([0, row1_y_offset - hole_radius, 0])
         cable_groove();
     
-    row2_y_offset = 2 + 48.26;
+    row2_y_offset = row1_y_offset + 48.26;
     translate([holes_x_offset, row2_y_offset, 0])
         hole_cylinder();
     translate([base_width - holes_x_offset, row2_y_offset, 0])
@@ -126,7 +126,7 @@ difference() {
     translate([0, row2_y_offset - hole_radius, 0])
         cable_groove();
     
-    row3_y_offset = 2 + 48.26 + 30; 
+    row3_y_offset = row1_y_offset + row2_y_offset + 30; 
     translate([holes_x_offset, row3_y_offset, 0])
         hole_cylinder();
     translate([base_width - holes_x_offset, row3_y_offset, 0])

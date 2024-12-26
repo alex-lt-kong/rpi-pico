@@ -14,4 +14,4 @@ module square_frame(groove_width, groove_length, groove_height) {
 }
 
 // Example usage
-square_frame(base_width + 1.9, base_length - 5, 2.9);  // Call the function with desired parameters
+square_frame(base_width + 2, base_length - 5, 2.8);  // Call the function with desired parameters

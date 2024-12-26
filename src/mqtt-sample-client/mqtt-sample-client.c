@@ -143,7 +143,6 @@ int main() {
     goto err_cyw43_arch_init_failed;
   }
   printf_ts("cyw43_driver and lwIP stack initialized\n");
-  cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, true);
 
   mc = mqtt_client_new();
   if (mc == NULL) {
