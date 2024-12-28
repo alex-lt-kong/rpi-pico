@@ -162,8 +162,7 @@ int main() {
     int rc;
     if ((rc = initialize_wifi()) != 0) {
       printf_ts("initialize_wifi() failed, rc: %d\n", rc);
-      if (rc == -2)
-        goto err_wifi_initialized_but_connection_failed;
+      goto err_wifi_initialization_failed;
     }
 
     if ((rc = init_server_ip()) != 0) {
@@ -247,7 +246,7 @@ int main() {
   err_mqtt_client_connect_failed:
   err_tls_failed:
   err_init_server_ip_failed:
-  err_wifi_initialized_but_connection_failed:
+  err_wifi_initialization_failed:
     continue;
   }
   cyw43_arch_deinit();
