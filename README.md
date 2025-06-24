@@ -11,3 +11,7 @@
 ## Deploy
 
 We want the uf2 version
+
+## Debug
+
+- Typical way to check stdout: `sudo screen /dev/ttyACM0 115200`

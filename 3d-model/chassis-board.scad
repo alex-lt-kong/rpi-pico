@@ -5,7 +5,7 @@ pico_w_length = 51;
 margin = 1;
 
 side_panel_height = 40;
-side_panel_thickness = 3;
+side_panel_thickness = 2;
 
 base_thickness = 3;
 base_width = pico_w_width + margin * 2 + side_panel_thickness * 2;

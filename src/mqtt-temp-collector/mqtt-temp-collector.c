@@ -1,4 +1,3 @@
-// https://github.com/cniles/picow-iot/blob/main/picow_iot.c
 #include "crypto_consts.h"
 #include "dht20/src/dht20/dht20.h"
 #include "helper.h"
@@ -15,6 +14,7 @@
 #include "pico/stdlib.h"
 #include "pico/time.h"
 
+#include <math.h>
 #include <stdio.h>
 
 dht20_reading dht20_result;
@@ -23,7 +23,7 @@ dht20_reading dht20_result;
 #define PICO_DEFAULT_I2C_SDA_PIN 0
 #define PICO_DEFAULT_I2C_SCL_PIN 1
 
-#define MQTT_TLS 1
+#define MQTT_TLS 0
 #define PAYLOAD_SIZE 128
 #define MQTT_KEEPALIVE_SEC 30
 
@@ -214,15 +214,23 @@ int main() {
     struct altcp_tls_config *tls_config;
     const char *cert = CRYPTO_CERT;
     printf_ts("Setting up TLS with cert.\n");
-    tls_config = altcp_tls_create_config_client((const u8_t *)cert,
-                                                1 + strlen((const char *)cert));
+
+    // tls_config = altcp_tls_create_config_client((const u8_t *)cert,
+    // 1 + strlen((const char *)cert));
+
+    // TLS validation turned off...
+    tls_config = altcp_tls_create_config_client(NULL, 0);
 
     if (tls_config == NULL) {
-      printf_ts("Failed to initialize config\n");
+      printf_ts("Failed to initialize "
+                "TLS config\n");
       goto err_tls_failed;
     } else {
       printf_ts("TLS configured\n");
     }
+
+    // mbedtls_ssl_conf_authmode(&(tls_config->conf),
+    // MBEDTLS_SSL_VERIFY_REQUIRED);
 
     ci.tls_config = tls_config;
 #endif
@@ -236,12 +244,18 @@ int main() {
                                    LWIP_CONST_CAST(void *, &ci), &ci);
     cyw43_arch_lwip_end();
     if (mqtt_err != ERR_OK && mqtt_err != ERR_ISCONN) {
-      printf_ts("mqtt_client_connect() failed: %d\n", mqtt_err);
+      printf_ts("mqtt_client_connect() "
+                "failed: %d\n",
+                mqtt_err);
       goto err_mqtt_client_connect_failed;
     }
 
-    // Waiting for the MQTT connection to establish
-    sleep_ms(delay_sec * 1000);
+    // Waiting for the MQTT
+    // connection to establish
+    // sleep_ms(delay_sec * 1000);
+    sleep_with_output(10, "checking MQTT "
+                          "connection status");
+
     if (mqtt_client_is_connected(mc) == 0) {
       printf_ts("mqtt NOT connected\n");
       goto err_mqtt_client_connect_failed;
@@ -249,7 +263,8 @@ int main() {
       printf_ts("mqtt connected\n");
     }
 
-    printf_ts("Entering publishing loop, interval: %d sec\n",
+    printf_ts("Entering publishing loop, "
+              "interval: %d sec\n",
               publish_interval_sec);
 
     while (1) {
@@ -264,11 +279,13 @@ int main() {
       cyw43_arch_poll();
       char payload[PAYLOAD_SIZE];
       if ((rc = dht20_measure(&dht20_result)) != 0) {
-        printf_ts("dht20_measure() failed: %d\n", rc);
+        printf_ts("dht20_measure() "
+                  "failed: %d\n",
+                  rc);
         continue;
       }
-      snprintf(payload, PAYLOAD_SIZE, "{\"reading\": %.01f}",
-               dht20_result.temp_celsius);
+      snprintf(payload, PAYLOAD_SIZE, "{\"temp_celsius\": %.01f, \"RH\": %.0f}",
+               dht20_result.temp_celsius, round(dht20_result.humidity));
       printf_ts("payload: %s\n", payload);
       cyw43_arch_lwip_begin();
       printf_ts("Publishing data to " MQTT_TOPIC "...");
@@ -285,7 +302,6 @@ int main() {
   err_mqtt_publish_failed:
     mqtt_disconnect(mc);
   err_mqtt_client_connect_failed:
-  err_tls_failed:
   err_init_server_ip_failed:
   err_wifi_initialization_failed:
     continue;
